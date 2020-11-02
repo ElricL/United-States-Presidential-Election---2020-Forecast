@@ -1,0 +1,444 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={United States Presidential Election - 2020 Forecast},
+  pdfauthor={Elric Lazaro},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable,booktabs}
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{amsmath}
+
+\title{United States Presidential Election - 2020 Forecast}
+\author{Elric Lazaro}
+\date{November 2, 2020}
+
+\begin{document}
+\maketitle
+
+\emph{Code and data supporting this analysis is available at:}\\
+\url{https://github.com/ElricL/United-States-Presidential-Election-2020-Forecast.git}
+
+\hypertarget{model}{%
+\section{Model}\label{model}}
+
+\hypertarget{model-specifics}{%
+\subsection{Model Specifics}\label{model-specifics}}
+
+~~~~~~Our model will be fitted using a survey sample obtained from
+\href{https://www.voterstudygroup.org/publication/nationscape-data-set}{Democracy
+Fund + UCLA Nationscape}. From the collection of data given, we will be
+using the most recent survey available which is dated on June 25th,
+2020. When processing the data I managed to create boolean (True/False)
+variables of wether to vote Trump or not and as well as Biden. Such
+variable translates well with logistic model regression. A logistic
+model will be used as it allows us to estimate and isolate probability.
+The following variables from our survey data will be used as I believe
+there is a correlation between them and the potential candidate vote:
+gender, race ethnicity, household income, and state. State in particular
+will be used as a group variable, making our model a multilevel model.
+This allows the model's intercept to vary from state to state. This is
+done as I believe that different states have different starting points
+in our model as there must be some correlation between the output of the
+other predictor variables and the state. Therefore, using a group
+variable should improve our model's performance in comparison to simply
+generalizing our probability through all of United States. The logistic
+regression model I am using can be written as a formula:
+
+\begin{align*}
+log(\frac{(p)}{1-(p)}) &= {\beta}_0 + 
+                            {\beta}_1x_{gender : Male} + {\beta}_2x_{gender : Female} + \\
+                        &    {\beta}_2x_{race\_ethnicity : Asian\: (Chinese)} + \\
+                        &    {\beta}_3x_{race\_ethnicity : Asian\: (Japanese)} + \\
+                        &    {\beta}_4x_{race\_ethnicity : Black\: or\: African\: American} + \\
+                        &    {\beta}_5x_{race\_ethnicity : Other\: Asian\: or\: Pacific\: Islander} + \\
+                        &    {\beta}_6x_{race\_ethnicity : Some\: other\: race} + \\
+                        &    {\beta}_7x_{race\_ethnicity : White} + \\
+                        &    {\beta}_8x_{household\_income : \$125000\: and\: above} + \\
+                        &    {\beta}_9x_{household\_income : \$100000\: to\: \$124999} + \\
+                        &    {\beta}_10x_{household\_income : \$75000\: to\: \$99999} + \\
+                        &    {\beta}_11x_{household\_income : \$50000\: to\: \$74999} + \\
+                        &    {\beta}_12x_{household\_income : \$15000\: to\: \$49999} + \\
+                        &    {\beta}_13x_{household\_income : \$75000\: to\: \$99999} + \\
+                        &    {\beta}_14x_{household\_income : Less\: than\: \$14999} + \epsilon\\
+\end{align*}
+
+~~~~~~Where \(p\) represents the probability that a voter or voters will
+vote the model's specific candidate. Similarly, \(\beta_0\) represents
+the intercept of the model, which will vary depending on the state.
+Additionally, the following \(\beta\) represents the slopes of the
+features. The higher the slope the higher the probability is for given
+variable. For instance if the slope for a person with household income
+`\(Less\: than\: \$14,999\)' is -1 while one with income of
+\(\$15,000\: to\: \$49,999\) is 1, the person with higher income is more
+likely to vote the model's candidate given their positive and large
+slope. Note that a negative slope also decreases likelihood while a
+positive increases.\\
+\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}Note
+that since we are analyzing votes for Trump and Biden we will perform
+this model twice with a fit for each candidate.
+
+\hypertarget{post-stratification}{%
+\subsection{Post-Stratification}\label{post-stratification}}
+
+~~~~~~In order to estimate the proportion of voters who will vote for
+either candidates I need to perform a post-stratification analysis. The
+estimation for our logistic model will be done on
+\href{https://usa.ipums.org/usa/index.shtml}{American Community Surveys
+(ACS) data}. This census data will provide us the Individual/Unit level
+features that can be entered into our model along with the individual's
+State, allowing us to make great amount of predictions. Predictions will
+come in form of cells based of diefferent gender, race ethnicity,
+household income, and State. Each will then be weighted based on their
+population size divided by the entire population size. Note that for
+post-stratification we can only use one model. We can simply choose the
+model that has a better correlation between our probability of vote and
+the variables. This can be achieved by observing the model's p-values
+and which one is usually lower. We can do this as a lower p-value means
+we can more likely reject the null hypothesis that there is no
+correlation.
+
+\hypertarget{results}{%
+\section{Results}\label{results}}
+
+The following are the results of our model fit for each candidate:
+
+\begin{longtable}[]{@{}lrr@{}}
+\toprule
+factors & Trump\_Estimate & Biden\_Estimate\tabularnewline
+\midrule
+\endhead
+gender: Male & 0.40 & -0.37\tabularnewline
+race\_ethnicity: Asian (Chinese) & -1.33 & 1.33\tabularnewline
+race\_ethnicity: Asian (Japanese) & -1.14 & 1.50\tabularnewline
+race\_ethnicity: Black or African American & -2.06 & 1.83\tabularnewline
+race\_ethnicity: Other Asian or Pacific Islander & -0.71 &
+0.79\tabularnewline
+race\_ethnicity: Some other race & -0.76 & 0.76\tabularnewline
+race\_ethnicity: White & 0.06 & 0.21\tabularnewline
+household\_income: \$125,000 and above & 0.12 & 0.00\tabularnewline
+household\_income: \$15,000 to \$49,999 & -0.27 & 0.28\tabularnewline
+household\_income: \$50,000 to \$74,999 & -0.21 & 0.25\tabularnewline
+household\_income: \$75,000 to \$99,999 & -0.25 & 0.39\tabularnewline
+household\_income: Less than \$14,999 & -0.47 & 0.21\tabularnewline
+\bottomrule
+\end{longtable}
+
+\textbf{Figure 1:} Summary of the logistic model for the likelihood of
+voting for Donald Trump and Jose Biden. Shows key details as to how each
+characteristic of an Individual affects their probability of voting the
+candidate.
+
+~~~~~~The \(\beta\) coefficients or slopes of our models can be
+identified in the estimate column which we can then use to observe how
+each individual characteristic affect the probability of voting the
+candidate. The fit of our model has concluded that individuals with
+certain characteristics will more likely vote one than the other. For
+instance, we can observe that the estimate/{[}Beta{]} coefficient for
+male gender has a positive number for Trump's logistic model while
+Biden's is negative. We should be able to observe from this result that
+there is a higher chance that male-identified people will vote Trump
+over Biden. More on the results of these estimates are further detailed
+in the Discussion section.\\
+\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}There
+were more lower p-values in Biden's model than Trump's and as a result I
+am more confident with rejecting the null hypothesis of no correlation
+between the logistic probability and the variables for Biden's logistic
+model. Therefore, Post-stratification was estimated using logistic model
+on probability of voting Biden.
+
+\begin{longtable}[]{@{}lrr@{}}
+\toprule
+Parameter & Trump\_p\_value & Biden\_p\_value\tabularnewline
+\midrule
+\endhead
+b\_Intercept & 0.6840 & 0.0455\tabularnewline
+b\_as.factorgenderMale & 0.0000 & 0.0000\tabularnewline
+b\_as.factorrace\_ethnicityAsianChinese & 0.0040 & 0.0010\tabularnewline
+b\_as.factorrace\_ethnicityAsianJapanese & 0.0755 &
+0.0135\tabularnewline
+b\_as.factorrace\_ethnicityBlackorAfricanAmerican & 0.0000 &
+0.0000\tabularnewline
+b\_as.factorrace\_ethnicityOtherAsianorPacificIslander & 0.0340 &
+0.0200\tabularnewline
+b\_as.factorrace\_ethnicitySomeotherrace & 0.0170 &
+0.0140\tabularnewline
+b\_as.factorrace\_ethnicityWhite & 0.8080 & 0.4710\tabularnewline
+b\_as.factorhousehold\_income.125000andabove & 0.3455 &
+0.9880\tabularnewline
+b\_as.factorhousehold\_income.15000to.49999 & 0.0150 &
+0.0160\tabularnewline
+b\_as.factorhousehold\_income.50000to.74999 & 0.0830 &
+0.0560\tabularnewline
+b\_as.factorhousehold\_income.75000to.99999 & 0.0515 &
+0.0060\tabularnewline
+b\_as.factorhousehold\_incomeLessthan.14999 & 0.0005 &
+0.1295\tabularnewline
+\bottomrule
+\end{longtable}
+
+\textbf{Figure 3:} p-values for each coefficient in Trump's and Biden's
+logistic Model.
+
+~~~~~~I estimated that the proportion of voters in favor of voting for
+Joe Biden to be 0.6059. This is based off our post-stratification
+analysis of the proportion of voters in favor of Joe Biden modeled by a
+multilevel logistic regression model, which accounted for gender, racial
+ethnicity, and household income. We can also then assume that Trump will
+likely have lesser proportion of 0.3941\\
+\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}When
+grouping the post-stratification values by states, we can also see that
+the prediction of majority of the votes going to Joe Biden is reflected
+for all states.
+
+\begin{longtable}[]{@{}lrr@{}}
+\toprule
+state & biden\_mean & trump\_mean\tabularnewline
+\midrule
+\endhead
+AK & 0.5915968 & 0.4084032\tabularnewline
+AL & 0.6083066 & 0.3916934\tabularnewline
+AR & 0.5957102 & 0.4042898\tabularnewline
+AZ & 0.5943875 & 0.4056125\tabularnewline
+CA & 0.6222799 & 0.3777201\tabularnewline
+CO & 0.6058778 & 0.3941222\tabularnewline
+CT & 0.6201915 & 0.3798085\tabularnewline
+DE & 0.6192934 & 0.3807066\tabularnewline
+FL & 0.6043012 & 0.3956988\tabularnewline
+GA & 0.6069732 & 0.3930268\tabularnewline
+HI & 0.6295420 & 0.3704580\tabularnewline
+IA & 0.5988385 & 0.4011615\tabularnewline
+ID & 0.5853934 & 0.4146066\tabularnewline
+IL & 0.6171970 & 0.3828030\tabularnewline
+IN & 0.6001897 & 0.3998103\tabularnewline
+KS & 0.5894536 & 0.4105464\tabularnewline
+KY & 0.6062190 & 0.3937810\tabularnewline
+LA & 0.6202668 & 0.3797332\tabularnewline
+MA & 0.6232733 & 0.3767267\tabularnewline
+MD & 0.6288788 & 0.3711212\tabularnewline
+ME & 0.6036194 & 0.3963806\tabularnewline
+MI & 0.6148379 & 0.3851621\tabularnewline
+MN & 0.6076186 & 0.3923814\tabularnewline
+MO & 0.6021359 & 0.3978641\tabularnewline
+MS & 0.6209450 & 0.3790550\tabularnewline
+MT & 0.5954066 & 0.4045934\tabularnewline
+NC & 0.6123569 & 0.3876431\tabularnewline
+ND & 0.5931499 & 0.4068501\tabularnewline
+NE & 0.6048072 & 0.3951928\tabularnewline
+NH & 0.5993558 & 0.4006442\tabularnewline
+NJ & 0.6100697 & 0.3899303\tabularnewline
+NM & 0.6061043 & 0.3938957\tabularnewline
+NV & 0.6011792 & 0.3988208\tabularnewline
+NY & 0.6204264 & 0.3795736\tabularnewline
+OH & 0.6057539 & 0.3942461\tabularnewline
+OK & 0.5964378 & 0.4035622\tabularnewline
+OR & 0.6087793 & 0.3912207\tabularnewline
+PA & 0.5965854 & 0.4034146\tabularnewline
+RI & 0.6083086 & 0.3916914\tabularnewline
+SC & 0.5955919 & 0.4044081\tabularnewline
+SD & 0.5939414 & 0.4060586\tabularnewline
+TN & 0.5923052 & 0.4076948\tabularnewline
+TX & 0.5913462 & 0.4086538\tabularnewline
+UT & 0.5881083 & 0.4118917\tabularnewline
+VA & 0.6190287 & 0.3809713\tabularnewline
+VT & 0.6099102 & 0.3900898\tabularnewline
+WA & 0.6187212 & 0.3812788\tabularnewline
+WI & 0.6105218 & 0.3894782\tabularnewline
+WV & 0.5947574 & 0.4052426\tabularnewline
+WY & 0.5975353 & 0.4024647\tabularnewline
+\bottomrule
+\end{longtable}
+
+\textbf{Figure 3:} Post-stratification values of proportion voters for
+Joe Biden and Donald Trump per State.
+
+\hypertarget{discussion}{%
+\section{Discussion}\label{discussion}}
+
+~~~~~~Using my multilevel logistic regression model that I fitted for
+both Trump vote and Biden vote intentions, I was able to observe which
+kind of individuals would gravitate towards Joe Biden or Trump based on
+their gender, ethnicity, and household income. With the two regression
+models, I chose Biden's model for our post-stratification process for
+having better correlation with my individual variables. Using the census
+data obtained from American Community Surveys, we then estimated on
+different cells based on the identified gender, race ethnicity, and
+household income.\\
+\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}\hspace*{0.333em}Using
+the slopes that we have observed from our results we can make deductions
+on how each variable affect the likelihood of an individual voting for
+either candidate. Starting with trump I can observe the following:
+
+\begin{itemize}
+\item
+  Race ethnicity other than `White' have lesser likelihood of voting
+  him.
+\item
+  Males are more likely to vote Trump compared to Females.
+\item
+  Individuals with high income (\$125,000 and above) are more likely to
+  vote him while a specified lesser income decreases the chances.\\
+\end{itemize}
+
+Biden on the other hand had the opposite situation with the following
+relationships:
+
+\begin{itemize}
+\item
+  Non `White' ethnicities have likelier chance of voting Biden. However,
+  do note that individuals identified as `White' still have decent
+  chance of voting Biden given their positive slope.
+\item
+  Males are less likely to vote Biden compared to females.
+\item
+  Individuals with income less than \$125,000 are more likely to vote
+  Biden.
+\end{itemize}
+
+~~~~~~However, it appeared that overall there were more characteristics
+that leads to a higher chance of favoring Biden. This can be further
+strengthened by my post-stratification results which gave a higher
+estimate for Joe Biden. Based off the estimated proportion of voters in
+favor of voting for Joe Biden being 0.6059, I predict that Joe Biden
+will win the election.
+
+\hypertarget{weaknesses}{%
+\subsection{Weaknesses}\label{weaknesses}}
+
+~~~~~~There are some limitations to my research. Given how expensive
+fitting a logistic model with Bayesian inference, variables such as
+household income had to be simplified. For same reason, age had to be
+omitted as a census dataset with it proved to be too large to calculate
+predictions on our model. The census data and survey data had some
+differences with their outputs resulting in needing to omit some
+information to generalize and match the two datasets. For instance,
+survey data contained more types of racial ethnicities but since we need
+to make predictions based off census data which had more limited output,
+many of the races had to be re-categorized. i.e.~Asian (Asian Indian)
+outputs in the survey data had to be replaced with `Other Asian or
+Pacific Islander'. Lastly, while the model with best p-values were
+chosen for post-stratification process, some were still above the
+standard alpha level of 0.05 and as a result it is possible correlation
+may be weak.
+
+\hypertarget{next-steps}{%
+\subsection{Next Steps}\label{next-steps}}
+
+~~~~~~To further improve the model and post-stratification process, we
+can compare it to the final election results. If our prediction on Joe
+Biden winning the election ends up being wrong, it is critical to see
+where our analysis went wrong. There are many things we can look into
+that would result in our poor prediction in such scenario. Firstly, We
+could have missed an important variable in our model. Our dataset may
+not reflect well with general population. Further samples and surveys
+should have been used. Other ways we could have improve this model if
+given wrong prediction is by trying out different models if logistic
+regression ends up being inaccurate fit. For instance, using a model
+with Bayesian Inference may have allowed too much bias in the fit.
+Testing more efficient models may also be useful as it would allow me to
+use age as one of predictor variables as originally intended. Survey
+results also had ``Don't know'' or ``Someone else'' as the individual's
+vote intention. While their occurrence frequency should be too few to
+affect our final prediction result, it may still be interesting to find
+how these individuals have an affect on the outcome.
+
+\hypertarget{references}{%
+\section{References}\label{references}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  Join two tbls together. (n.d.). Retrieved from
+  \url{https://dplyr.tidyverse.org/reference/join.html}
+\item
+  Extract or Replace Parts of a Data Frame. (n.d.). Retrieved November
+  02, 2020, from
+  \url{https://astrostatistics.psu.edu/su07/R/html/base/html/Extract.data.frame.html}
+\item
+  Rename Data Frame Columns in R. (n.d.). Retrieved November 02, 2020,
+  from
+  \url{https://www.datanovia.com/en/lessons/rename-data-frame-columns-in-r/}
+\item
+  Convert case of a string - case. (n.d.). Retrieved November 02, 2020,
+  from \url{https://stringr.tidyverse.org/reference/case.html}
+\item
+  Hadley Wickham {[}aut, C. (2020, August 18). Group\_by\_all: Group by
+  a selection of variables in dplyr: A Grammar of Data Manipulation.
+  Retrieved November 02, 2020, from
+  \url{https://rdrr.io/cran/dplyr/man/group_by_all.html}
+\item
+  Daniel Lüdecke {[}aut, C. (2020, October 29). P\_value: P-values in
+  parameters: Processing of Model Parameters. Retrieved November 02,
+  2020, from \url{https://rdrr.io/cran/parameters/man/p_value.html}
+\item
+  Press, C., Finance, Y., \& Newsweek. (2020, October 30). New: Second
+  Nationscape Data Set Release. Retrieved November 02, 2020, from
+  \url{https://www.voterstudygroup.org/publication/nationscape-data-set}
+\item
+  Team, M. (n.d.). U.S. CENSUS DATA FOR SOCIAL, ECONOMIC, AND HEALTH
+  RESEARCH. Retrieved November 02, 2020, from
+  \url{https://usa.ipums.org/usa/index.shtml}
+\end{enumerate}
+
+\end{document}

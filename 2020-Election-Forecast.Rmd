@@ -1,0 +1,207 @@
+---
+title: "United States Presidential Election - 2020 Forecast"
+author: "Elric Lazaro"
+date: "November 2, 2020"
+header-includes:
+   - \usepackage{amsmath}
+output:
+  pdf_document:
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(brms)
+library(lme4)
+library(knitr)
+
+# Loading in the cleaned survey Data
+survey_data <- read_csv("C:/Users/elric/OneDrive - University of Toronto/University 2020-2021/Fall/STA304/Problem Sets/Problem Set 3/outputs/survey_data.csv")
+
+# Loading in the cleaned census Data
+census_data <- read_csv("C:/Users/elric/OneDrive - University of Toronto/University 2020-2021/Fall/STA304/Problem Sets/Problem Set 3/outputs/census_data.csv")
+```
+
+*Code and data supporting this analysis is available at:* \
+https://github.com/ElricL/United-States-Presidential-Election-2020-Forecast.git
+
+# Model
+
+## Model Specifics
+|       Our model will be fitted using a survey sample obtained from [Democracy Fund + UCLA Nationscape](https://www.voterstudygroup.org/publication/nationscape-data-set). From the collection of data given, we will be using the most recent survey available which is dated on June 25th, 2020. When processing the data I managed to create boolean (True/False) variables of wether to vote Trump or not and as well as Biden. Such variable translates well with logistic model regression. A logistic model will be used as it allows us to estimate and isolate probability. The following variables from our survey data will be used as I believe there is a correlation between them and the potential candidate vote: gender, race ethnicity, household income, and state. State in particular will be used as a group variable, making our model a multilevel model. This allows the model's intercept to vary from state to state. This is done as I believe that different states have different starting points in our model as there must be some correlation between the output of the other predictor variables and the state. Therefore, using a group variable should improve our model's performance in comparison to simply generalizing our probability through all of United States. The logistic regression model I am using can be written as a formula:
+
+\begin{align*}
+log(\frac{(p)}{1-(p)}) &= {\beta}_0 + 
+                            {\beta}_1x_{gender : Male} + {\beta}_2x_{gender : Female} + \\
+                        &    {\beta}_2x_{race\_ethnicity : Asian\: (Chinese)} + \\
+                        &    {\beta}_3x_{race\_ethnicity : Asian\: (Japanese)} + \\
+                        &    {\beta}_4x_{race\_ethnicity : Black\: or\: African\: American} + \\
+                        &    {\beta}_5x_{race\_ethnicity : Other\: Asian\: or\: Pacific\: Islander} + \\
+                        &    {\beta}_6x_{race\_ethnicity : Some\: other\: race} + \\
+                        &    {\beta}_7x_{race\_ethnicity : White} + \\
+                        &    {\beta}_8x_{household\_income : \$125000\: and\: above} + \\
+                        &    {\beta}_9x_{household\_income : \$100000\: to\: \$124999} + \\
+                        &    {\beta}_10x_{household\_income : \$75000\: to\: \$99999} + \\
+                        &    {\beta}_11x_{household\_income : \$50000\: to\: \$74999} + \\
+                        &    {\beta}_12x_{household\_income : \$15000\: to\: \$49999} + \\
+                        &    {\beta}_13x_{household\_income : \$75000\: to\: \$99999} + \\
+                        &    {\beta}_14x_{household\_income : Less\: than\: \$14999} + \epsilon\\
+\end{align*}
+
+|       Where $p$ represents the probability that a voter or voters will vote the model's specific candidate. Similarly, $\beta_0$ represents the intercept of the model, which will vary depending on the state. Additionally, the following $\beta$ represents the slopes of the features. The higher the slope the higher the probability is for given variable. For instance if the slope for a person with household income '$Less\: than\: \$14,999$' is -1 while one with income of $\$15,000\: to\: \$49,999$ is 1, the person with higher income is more likely to vote the model's candidate given their positive and large slope. Note that a negative slope also decreases likelihood while a positive increases. 
+|       Note that since we are analyzing votes for Trump and Biden we will perform this model twice with a fit for each candidate.
+```{r, include=FALSE}
+
+# Creating the Multilevel Logistic Models for Different States
+model_trump <- brm(vote_trump ~  as.factor(gender) + as.factor(race_ethnicity) +
+               as.factor(household_income) + (1|state), 
+            data=survey_data, family = bernoulli())
+model_biden <- brm(vote_Biden ~  as.factor(gender) + as.factor(race_ethnicity) +
+               as.factor(household_income) + (1|state), 
+            data=survey_data, family = bernoulli())
+
+## Other possible models for undecided and someone else results
+#model_undecided <- brm(vote_undecided ~  as.factor(gender) + as.factor(race_ethnicity) +
+#               as.factor(household_income) +
+#                       (1|state), 
+#            data=survey_data, family = bernoulli())
+#model_other <- brm(vote_someone_else ~  as.factor(gender) + as.factor(race_ethnicity) +
+#               as.factor(household_income) +
+#                       (1|state), 
+#            data=survey_data, family = bernoulli())
+
+# Choose model_biden for poststratification as it has better p-values
+p_trump <- parameters::p_value(model_trump) %>% 
+            rename(
+              Trump_p_value = p
+            )
+p_biden <- parameters::p_value(model_biden)  %>% 
+            rename(
+              Biden_p_value = p
+            )
+p_table <- left_join(p_trump, p_biden)
+```
+
+## Post-Stratification 
+
+|       In order to estimate the proportion of voters who will vote for either candidates I need to perform a post-stratification analysis. The estimation for our logistic model will be done on [American Community Surveys (ACS) data](https://usa.ipums.org/usa/index.shtml). This census data will provide us the Individual/Unit level features that can be entered into our model along with the individual's State, allowing us to make great amount of predictions. Predictions will come in form of cells based of diefferent gender, race ethnicity, household income, and State. Each will then be weighted based on their population size divided by the entire population size. Note that for post-stratification we can only use one model. We can simply choose the model that has a better correlation between our probability of vote and the variables. This can be achieved by observing the model’s p-values and which one is usually lower. We can do this as a lower p-value means we can more likely reject the null hypothesis that there is no correlation.
+
+```{r, include=FALSE}
+
+# Calculate probability for each states
+
+#post_stratified_estimates_trump <-
+#  model_trump %>%
+#  tidybayes::add_predicted_draws(newdata =census_data) %>%
+#  rename(alp_predict =.prediction) %>%
+#  mutate(alp_predict = exp(alp_predict)/(1+exp(alp_predict))) %>% 
+#  mutate(alp_predict_prop =alp_predict*COUNT) %>%
+#  group_by(state, .draw) %>%
+#  summarise(alp_predict =sum(alp_predict_prop)/sum(COUNT)) %>%
+#  group_by(state) %>% 
+#  summarise(trump_mean =mean(alp_predict))
+
+post_stratified_estimates_biden <-
+  model_biden %>%
+  tidybayes::add_predicted_draws(newdata =census_data) %>%
+  rename(alp_predict =.prediction) %>%
+  mutate(alp_predict = exp(alp_predict)/(1+exp(alp_predict))) %>% 
+  mutate(alp_predict_prop =alp_predict*COUNT) %>%
+  group_by(state, .draw) %>%
+  summarise(alp_predict =sum(alp_predict_prop)/sum(COUNT)) %>%
+  group_by(state) %>% 
+  summarise(biden_mean =mean(alp_predict))
+
+post_stratified_estimates <- post_stratified_estimates_biden
+post_stratified_estimates <- post_stratified_estimates %>% 
+                      mutate(trump_mean = 1-biden_mean)
+
+#The mean estimate for both Trump and Biden
+# mean(post_stratified_estimates$trump_mean)
+# mean(post_stratified_estimates$biden_mean)
+```
+
+# Results
+
+The following are the results of our model fit for each candidate:
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+## Uncomment summary tables to grab summary information
+# summary(model_trump)
+# summary(model_biden)
+
+## More compact summary of model coefficients
+factors <- c('gender: Male', 'race_ethnicity: Asian (Chinese)', 'race_ethnicity: Asian (Japanese)', 'race_ethnicity: Black or African American', 'race_ethnicity: Other Asian or Pacific Islander', 'race_ethnicity: Some other race', 'race_ethnicity: White', 'household_income: $125,000 and above', 'household_income: $15,000 to $49,999', 'household_income: $50,000 to $74,999', 'household_income: $75,000 to $99,999', 'household_income: Less than $14,999')
+Biden_Estimate <- c(-0.37, 1.33, 1.50, 1.83, 0.79, 0.76, 0.21, -0.00, 0.28, 0.25, 0.39, 0.21)
+Trump_Estimate <- c(0.40, -1.33, -1.14, -2.06, -0.71, -0.76, 0.06, 0.12, -0.27, -0.21, -0.25, -0.47)
+
+trump_table <- tibble(factors, Trump_Estimate)
+biden_table <- tibble(factors, Biden_Estimate)
+kable(left_join(trump_table, biden_table))
+```
+__Figure 1:__ Summary of the logistic model for the likelihood of voting for Donald Trump and Jose Biden. Shows key details as to how each characteristic of an Individual affects their probability of voting the candidate.
+
+|       The $\beta$ coefficients or slopes of our models can be identified in the estimate column which we can then use to observe how each individual characteristic affect the probability of voting the candidate. The fit of our model has concluded that individuals with certain characteristics will more likely vote one than the other. For instance, we can observe that the estimate/[Beta] coefficient for male gender has a positive number for Trump’s logistic model while Biden’s is negative. We should be able to observe from this result that there is a higher chance that male-identified people will vote Trump over Biden. More on the results of these estimates are further detailed in the Discussion section.
+|       There were more lower p-values in Biden's model than Trump's and as a result I am more confident with rejecting the null hypothesis of no correlation between the logistic probability and the variables for Biden's logistic model. Therefore, Post-stratification was estimated using logistic model on probability of voting Biden.
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+kable(p_table)
+```
+__Figure 3:__ p-values for each coefficient in Trump's and Biden's logistic Model.
+
+|       I estimated that the proportion of voters in favor of voting for Joe Biden to be 0.6059. This is based off our post-stratification analysis of the proportion of voters in favor of Joe Biden modeled by a multilevel logistic regression model, which accounted for gender, racial ethnicity, and household income. We can also then assume that Trump will likely have lesser proportion of 0.3941
+|       When grouping the post-stratification values by states, we can also see that the prediction of majority of the votes going to Joe Biden is reflected for all states.
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+kable(post_stratified_estimates)
+```
+__Figure 3:__ Post-stratification values of proportion voters for Joe Biden and Donald Trump per State.
+
+# Discussion
+
+|       Using my multilevel logistic regression model that I fitted for both Trump vote and Biden vote intentions, I was able to observe which kind of individuals would gravitate towards Joe Biden or Trump based on their gender, ethnicity, and household income. With the two regression models, I chose Biden’s model for our post-stratification process for having better correlation with my individual variables. Using the census data obtained from American Community Surveys, we then estimated on different cells based on the identified gender, race ethnicity, and household income.
+|       Using the slopes that we have observed from our results we can make deductions on how each variable affect the likelihood of an individual voting for either candidate. Starting with trump I can observe the following:
+* Race ethnicity other than ‘White’ have lesser likelihood of voting him.
+
+* Males are more likely to vote Trump compared to Females.
+
+* Individuals with high income ($125,000 and above) are more likely to vote him while a specified lesser income decreases the chances. \
+
+Biden on the other hand had the opposite situation with the following relationships:
+
+- Non ‘White’ ethnicities have likelier chance of voting Biden. However, do note that individuals identified as ‘White’ still have decent chance of voting Biden given their positive slope.
+
+- Males are less likely to vote Biden compared to females.
+
+- Individuals with income less than $125,000 are more likely to vote Biden.
+
+|       However, it appeared that overall there were more characteristics that leads to a higher chance of favoring Biden. This can be further strengthened by my post-stratification results which gave a higher estimate for Joe Biden. Based off the estimated proportion of voters in favor of voting for Joe Biden being 0.6059, I predict that Joe Biden will win the election. 
+
+## Weaknesses
+
+|       There are some limitations to my research. Given how expensive fitting a logistic model with Bayesian inference, variables such as household income had to be simplified. For same reason, age had to be omitted as a census dataset with it proved to be too large to calculate predictions on our model. The census data and survey data had some differences with their outputs resulting in needing to omit some information to generalize and match the two datasets. For instance, survey data contained more types of racial ethnicities but since we need to make predictions based off census data which had more limited output, many of the races had to be re-categorized. i.e. Asian (Asian Indian) outputs in the survey data had to be replaced with ‘Other Asian or Pacific Islander’. Lastly, while the model with best p-values were chosen for post-stratification process, some were still above the standard alpha level of 0.05 and as a result it is possible correlation may be weak.
+
+
+## Next Steps
+
+|       To further improve the model and post-stratification process, we can compare it to the final election results. If our prediction on Joe Biden winning the election ends up being wrong, it is critical to see where our analysis went wrong. There are many things we can look into that would result in our poor prediction in such scenario. Firstly, We could have missed an important variable in our model. Our dataset may not reflect well with general population. Further samples and surveys should have been used. Other ways we could have improve this model if given wrong prediction is by trying out different models if logistic regression ends up being inaccurate fit. For instance, using a model with Bayesian Inference may have allowed too much bias in the fit. Testing more efficient models may also be useful as it would allow me to use age as one of predictor variables as originally intended. Survey results also had “Don’t know” or “Someone else” as the individual’s vote intention. While their occurrence frequency should be too few to affect our final prediction result, it may still be interesting to find how these individuals have an affect on the outcome.
+
+
+# References
+
+1. Join two tbls together. (n.d.). Retrieved from https://dplyr.tidyverse.org/reference/join.html
+
+2. Extract or Replace Parts of a Data Frame. (n.d.). Retrieved November 02, 2020, from https://astrostatistics.psu.edu/su07/R/html/base/html/Extract.data.frame.html
+
+3. Rename Data Frame Columns in R. (n.d.). Retrieved November 02, 2020, from https://www.datanovia.com/en/lessons/rename-data-frame-columns-in-r/
+
+4. Convert case of a string - case. (n.d.). Retrieved November 02, 2020, from https://stringr.tidyverse.org/reference/case.html
+
+5. Hadley Wickham [aut, C. (2020, August 18). Group_by_all: Group by a selection of variables in dplyr: A Grammar of Data Manipulation. Retrieved November 02, 2020, from https://rdrr.io/cran/dplyr/man/group_by_all.html
+
+6. Daniel Lüdecke [aut, C. (2020, October 29). P_value: P-values in parameters: Processing of Model Parameters. Retrieved November 02, 2020, from https://rdrr.io/cran/parameters/man/p_value.html
+
+7. Press, C., Finance, Y., &amp; Newsweek. (2020, October 30). New: Second Nationscape Data Set Release. Retrieved November 02, 2020, from https://www.voterstudygroup.org/publication/nationscape-data-set
+
+8. Team, M. (n.d.). U.S. CENSUS DATA FOR SOCIAL, ECONOMIC, AND HEALTH RESEARCH. Retrieved November 02, 2020, from https://usa.ipums.org/usa/index.shtml
+
+
+
+
