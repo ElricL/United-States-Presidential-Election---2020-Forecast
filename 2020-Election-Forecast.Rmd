@@ -145,7 +145,7 @@ __Figure 1:__ Summary of the logistic model for the likelihood of voting for Don
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 kable(p_table)
 ```
-__Figure 3:__ p-values for each coefficient in Trump's and Biden's logistic Model.
+__Figure 2:__ p-values for each coefficient in Trump's and Biden's logistic Model.
 
 |       I estimated that the proportion of voters in favor of voting for Joe Biden to be 0.6059. This is based off our post-stratification analysis of the proportion of voters in favor of Joe Biden modeled by a multilevel logistic regression model, which accounted for gender, racial ethnicity, and household income. We can also then assume that Trump will likely have lesser proportion of 0.3941
 |       When grouping the post-stratification values by states, we can also see that the prediction of majority of the votes going to Joe Biden is reflected for all states.
